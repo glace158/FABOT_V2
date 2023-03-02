@@ -69,8 +69,7 @@ cd yolov5
 #Download yolov5s.pt weight 
 wget https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.pt
 ```
-
-## Install requirements
+Install requirements
 ```
 pip3 install -U PyYAML==5.3.1
 pip3 install tqdm
@@ -85,8 +84,7 @@ pip3 install typing-extensions==3.10.0.2
 pip3 install psutil
 pip3 install seaborn
 ```
-
-## Test yolov5 at WebCam
+STest yolov5 at WebCam
 ```
 python3 detect.py --source 0
 ```
