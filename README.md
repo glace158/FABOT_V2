@@ -1,4 +1,4 @@
-# fabot_v2
+# FABOT_V2
 
 ## Jetson Nano Setup
 ```
