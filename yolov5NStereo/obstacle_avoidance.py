@@ -56,7 +56,6 @@ def mouse_click(event,x,y,flags,param):
 
 
 cv2.namedWindow('disp',cv2.WINDOW_NORMAL)
-cv2.resizeWindow('disp',600,600)
 cv2.setMouseCallback('disp',mouse_click)
 
 output_canvas = None
@@ -65,35 +64,49 @@ output_canvas = None
 stereo = cv2.StereoBM_create()
 
 def obstacle_avoid():
-
 	# Mask to segment regions with depth less than threshold
 	mask = cv2.inRange(depth_map,10,depth_thresh)
-
-	# Check if a significantly large obstacle is present and filter out smaller noisy regions
-	if np.sum(mask)/255.0 > 0.01*mask.shape[0]*mask.shape[1]:
-
-		# Contour detection 
-		contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-		cnts = sorted(contours, key=cv2.contourArea, reverse=True)
-		
-		# Check if detected contour is significantly large (to avoid multiple tiny regions)
-		if cv2.contourArea(cnts[0]) > 0.01*mask.shape[0]*mask.shape[1]:
-
-			x,y,w,h = cv2.boundingRect(cnts[0])
-			
-			# finding average depth of region represented by the largest contour 
-			mask2 = np.zeros_like(mask)
-			cv2.drawContours(mask2, cnts, 0, (255), -1)
-
-			# Calculating the average depth of the object closer than the safe distance
-			depth_mean, _ = cv2.meanStdDev(depth_map, mask=mask2)
-			depth_mean = depth_mean
-			# Display warning text
-			cv2.putText(output_canvas, "%.2f cm"%depth_mean, (100,100),1,3,(255,255,255),2,3)
-
-	else:
-		cv2.putText(output_canvas, "", (100,100),1,3,(0,255,0),2,3)
 	
+	print(len(mask), len(mask[0]))
+	x1 = 640 // 2 - 100
+	y1 = 480 // 2 + 100
+	x2 = 640 // 2 + 100
+	y2 = 480 // 2 - 100
+	# Check if a significantly large obstacle is present and filter out smaller noisy regions
+	#if np.sum(mask)/255.0 > 0.01*mask.shape[0]*mask.shape[1]:
+
+	for x in range(len(mask)):
+		for y in range(len(mask[0])):
+			if (x > x1 and x < x2) and (y < y1 and y > y2):
+				continue
+			mask[x][y] = 0
+
+	# Contour detection 
+	contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+	cnts = sorted(contours, key=cv2.contourArea, reverse=True)
+	
+
+	cv2.imshow('mask',mask)
+	#cv2.imshow('cnt',cnts)
+		# Check if detected contour is significantly large (to avoid multiple tiny regions)
+		#if cv2.contourArea(cnts[0]) > 0.01*mask.shape[0]*mask.shape[1]:
+
+		#x,y,w,h = cv2.boundingRect(cnts[0])
+		
+		# finding average depth of region represented by the largest contour 
+	mask2 = np.zeros_like(mask)
+
+
+	cv2.rectangle(output_canvas, (x1,y1), (x2,y2), (255,255,255))
+	cv2.rectangle(depth_map, (x1,y1), (x2,y2), (255,255,255))
+	cv2.drawContours(mask2, cnts, 0, (255), -1)
+	cv2.imshow('mask2',mask2)
+	# Calculating the average depth of the object closer than the safe distance
+	depth_mean, _ = cv2.meanStdDev(depth_map, mask=mask2)
+	depth_mean = depth_mean
+	# Display warning text
+	cv2.putText(output_canvas, "%.2f cm"%depth_mean, (100,100),1,3,(255,255,255),2,3)
+
 	cv2.imshow('depth_map',depth_map)
 	cv2.imshow('output_canvas',output_canvas)
 	
@@ -163,8 +176,8 @@ while True:
 		
 		obstacle_avoid()
 		
-		cv2.resizeWindow("disp",700,700)
-		cv2.imshow("disp",disparity)
+		#cv2.resizeWindow("disp",700,700)
+		cv2.imshow("disp",disparity)#depth image
 
 		if cv2.waitKey(1) == 27:
 			break

@@ -1,11 +1,10 @@
-import argparse
+
 import os
 import sys
 from pathlib import Path
 import numpy as np
 import cv2
 import torch
-import torch.backends.cudnn as cudnn
 import time
 import math
 
@@ -16,19 +15,65 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from models.common import DetectMultiBackend
-from utils.dataloaders import LoadStreams
 from utils.general import (LOGGER, Profile, check_img_size, check_requirements, cv2,
                            non_max_suppression, scale_boxes)
 from utils.plots import Annotator, colors
 from utils.torch_utils import select_device, smart_inference_mode
 from utils.augmentations import letterbox
 
+# Reading the mapping values for stereo image rectification
+cv_file = cv2.FileStorage("./data/stereo_rectify_maps.xml", cv2.FILE_STORAGE_READ)
+Left_Stereo_Map_x = cv_file.getNode("Left_Stereo_Map_x").mat()
+Left_Stereo_Map_y = cv_file.getNode("Left_Stereo_Map_y").mat()
+Right_Stereo_Map_x = cv_file.getNode("Right_Stereo_Map_x").mat()
+Right_Stereo_Map_y = cv_file.getNode("Right_Stereo_Map_y").mat()
+cv_file.release()
+
+depth_map = None
+disparity = None
+# These parameters can vary according to the setup
+max_depth = 400 # maximum distance the setup can measure (in cm)
+min_depth = 0 # minimum distance the setup can measure (in cm)
+depth_thresh = 400.0 # Threshold for SAFE distance (in cm)
+
+# Reading the stored the StereoBM parameters
+cv_file = cv2.FileStorage("./data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_READ)
+numDisparities = int(cv_file.getNode("numDisparities").real())
+blockSize = int(cv_file.getNode("blockSize").real())
+preFilterType = int(cv_file.getNode("preFilterType").real())
+preFilterSize = int(cv_file.getNode("preFilterSize").real())
+preFilterCap = int(cv_file.getNode("preFilterCap").real())
+textureThreshold = int(cv_file.getNode("textureThreshold").real())
+uniquenessRatio = int(cv_file.getNode("uniquenessRatio").real())
+speckleRange = int(cv_file.getNode("speckleRange").real())
+speckleWindowSize = int(cv_file.getNode("speckleWindowSize").real())
+disp12MaxDiff = int(cv_file.getNode("disp12MaxDiff").real())
+minDisparity = int(cv_file.getNode("minDisparity").real())
+M = cv_file.getNode("M").real()
+cv_file.release()
+
+# Creating an object of StereoBM algorithm
+stereo = cv2.StereoBM_create()
+
+stereo.setNumDisparities(numDisparities)
+stereo.setBlockSize(blockSize)
+stereo.setPreFilterType(preFilterType)
+stereo.setPreFilterSize(preFilterSize)
+stereo.setPreFilterCap(preFilterCap)
+stereo.setTextureThreshold(textureThreshold)
+stereo.setUniquenessRatio(uniquenessRatio)
+stereo.setSpeckleRange(speckleRange)
+stereo.setSpeckleWindowSize(speckleWindowSize)
+stereo.setDisp12MaxDiff(disp12MaxDiff)
+stereo.setMinDisparity(minDisparity)
+
+
 @smart_inference_mode()
 def run(
         weights=ROOT / 'best3.pt',  # model path or triton URL
         source=ROOT / '0',  # file/dir/URL/glob/screen/0(webcam)
         data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
-        img_size=(640, 640),  # inference size (height, width)
+        img_size=(640, 480),  # inference size (height, width)
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
@@ -41,7 +86,6 @@ def run(
         hide_conf=False,  # hide confidences
         half=False,  # use FP16 half-precision inference
         dnn=False,  # use OpenCV DNN for ONNX inference
-        vid_stride=1,  # video frame-rate stride
 ):
     #source = str(source)
     source = 0
@@ -53,10 +97,9 @@ def run(
 
     # Dataloader
     bs = 0  # batch_size
-    #dataset = LoadStreams(source, img_size=img_size, stride=stride, auto=auto, vid_stride=vid_stride)
     torch.backends.cudnn.benchmark = True
-    n = 1
-    imgs, fps, frames, threads = [None], 0, 0, None
+    
+    imgs, fps, frames= [None], 0, 0
     transforms = None
     cap = cv2.VideoCapture(source)
     cap2 = cv2.VideoCapture(source + 1)
@@ -86,6 +129,48 @@ def run(
         
         cap.grab()
         success, im = cap.retrieve()
+
+        #depth_map = create_depth(im, im2)
+        
+        
+        imgR = cv2.resize(im, (640,480))
+        imgL = cv2.resize(im2, (640,480))
+        
+        imgR = cv2.cvtColor(imgR,cv2.COLOR_BGR2GRAY)
+        imgL = cv2.cvtColor(imgL,cv2.COLOR_BGR2GRAY)
+        
+        # Applying stereo image rectification on the left image
+        Left_nice= cv2.remap(imgL,
+                            Left_Stereo_Map_x,
+                            Left_Stereo_Map_y,
+                            cv2.INTER_LANCZOS4,
+                            cv2.BORDER_CONSTANT,
+                            0)
+        
+        # Applying stereo image rectification on the right image
+        Right_nice= cv2.remap(imgR,
+                            Right_Stereo_Map_x,
+                            Right_Stereo_Map_y,
+                            cv2.INTER_LANCZOS4,
+                            cv2.BORDER_CONSTANT,
+                            0)
+
+        # Calculating disparity using the StereoBM algorithm
+        disparity = stereo.compute(Left_nice,Right_nice)
+
+        # Converting to float32 
+        disparity = disparity.astype(np.float32)
+
+        # Normalizing the disparity map
+        disparity = (disparity/16.0 - minDisparity)/numDisparities
+        try:
+            depth_map = M/(disparity) # for depth in (cm)
+        except:
+            depth_map = 0
+        
+        mask_temp = cv2.inRange(depth_map,min_depth,max_depth)
+        depth_map = cv2.bitwise_and(depth_map,depth_map,mask=mask_temp)
+
         #im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         if success:
             imgs[0] = im
@@ -122,11 +207,14 @@ def run(
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
+            depth_mean = None
+            
             im0 = im0s[0].copy()
 
-            im0 = cv2.resize(im0, (640,640))
+            im0 = cv2.resize(im0, img_size)
             
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
+            
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
@@ -136,12 +224,29 @@ def run(
                     c = int(cls)  # integer class
                     label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                     annotator.box_label(xyxy, label, color=colors(c, True))
-                
+                    #depth_mean = draw_distance(depth_map, xyxy[0], xyxy[1], xyxy[2], xyxy[3])
+                    # Mask to segment regions with depth less than threshold
+                    x1,y1,x2,y2 = int(xyxy[0]) ,int(xyxy[1]), int(xyxy[2]) ,int(xyxy[3])
+                    mask = cv2.inRange(depth_map,10,0)
+                    temp = depth_map[y1: y2, x1: x2]
+                    mask[y1: y2, x1: x2] = temp
+
+                    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                    cnts = sorted(contours, key=cv2.contourArea, reverse=True)                    
+
+                    mask2 = np.zeros_like(mask)
+                    cv2.drawContours(mask2, cnts, 0, (255), -1)
+                    depth_mean, _ = cv2.meanStdDev(depth_map, mask=mask2)
+                    
+                    cv2.putText(im0, "%.2f cm"%depth_mean, (int(xyxy[0]) ,int(xyxy[1]) +60),1,3,(255,255,255),5,3)
+                    
+                    
             # Stream results
             im0 = annotator.result()
             
-            im2 = cv2.resize(im2, (640,640))
-            cv2.imshow(str(source+1), im2)
+                
+            im2 = cv2.resize(im2, img_size)
+            #cv2.imshow(str(source+1), im2)
             cv2.imshow(str(source), im0)
             cv2.waitKey(1)  # 1 millisecond
 
