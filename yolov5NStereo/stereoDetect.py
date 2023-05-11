@@ -130,14 +130,8 @@ def run(
         cap.grab()
         success, im = cap.retrieve()
 
-        #depth_map = create_depth(im, im2)
-        
-        
-        imgR = cv2.resize(im, (640,480))
-        imgL = cv2.resize(im2, (640,480))
-        
-        imgR = cv2.cvtColor(imgR,cv2.COLOR_BGR2GRAY)
-        imgL = cv2.cvtColor(imgL,cv2.COLOR_BGR2GRAY)
+        imgR = cv2.resize(im, img_size)
+        imgL = cv2.resize(im2, img_size)
         
         # Applying stereo image rectification on the left image
         Left_nice= cv2.remap(imgL,
@@ -147,6 +141,8 @@ def run(
                             cv2.BORDER_CONSTANT,
                             0)
         
+        im = Left_nice
+
         # Applying stereo image rectification on the right image
         Right_nice= cv2.remap(imgR,
                             Right_Stereo_Map_x,
@@ -155,6 +151,9 @@ def run(
                             cv2.BORDER_CONSTANT,
                             0)
 
+        Right_nice = cv2.cvtColor(Right_nice,cv2.COLOR_BGR2GRAY)
+        Left_nice = cv2.cvtColor(Left_nice,cv2.COLOR_BGR2GRAY)
+        
         # Calculating disparity using the StereoBM algorithm
         disparity = stereo.compute(Left_nice,Right_nice)
 
@@ -171,7 +170,6 @@ def run(
         mask_temp = cv2.inRange(depth_map,min_depth,max_depth)
         depth_map = cv2.bitwise_and(depth_map,depth_map,mask=mask_temp)
 
-        #im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         if success:
             imgs[0] = im
         else:
@@ -186,9 +184,9 @@ def run(
         else:
             im = np.stack([letterbox(x, img_size, stride=stride, auto=auto)[0] for x in im0s])  # resize
             im = im[..., ::-1].transpose((0, 3, 1, 2))  # BGR to RGB, BHWC to BCHW
+            #im = im[..., ::-1].transpose((2,0,1))
             im = np.ascontiguousarray(im)  # contiguous
 
-        #for path, im, im0s, vid_cap, s in dataset:
         with dt[0]:
             
             im = torch.from_numpy(im).to(model.device)
@@ -224,7 +222,7 @@ def run(
                     c = int(cls)  # integer class
                     label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
                     annotator.box_label(xyxy, label, color=colors(c, True))
-                    #depth_mean = draw_distance(depth_map, xyxy[0], xyxy[1], xyxy[2], xyxy[3])
+
                     # Mask to segment regions with depth less than threshold
                     x1,y1,x2,y2 = int(xyxy[0]) ,int(xyxy[1]), int(xyxy[2]) ,int(xyxy[3])
                     mask = cv2.inRange(depth_map,10,0)
@@ -238,15 +236,11 @@ def run(
                     cv2.drawContours(mask2, cnts, 0, (255), -1)
                     depth_mean, _ = cv2.meanStdDev(depth_map, mask=mask2)
                     
-                    cv2.putText(im0, "%.2f cm"%depth_mean, (int(xyxy[0]) ,int(xyxy[1]) +60),1,3,(255,255,255),5,3)
-                    
+                    cv2.putText(im0, "%.2f cm"%depth_mean, (x1 ,y1 +60),1,3,(255,255,255),5,3)
                     
             # Stream results
             im0 = annotator.result()
-            
-                
-            im2 = cv2.resize(im2, img_size)
-            #cv2.imshow(str(source+1), im2)
+
             cv2.imshow(str(source), im0)
             cv2.waitKey(1)  # 1 millisecond
 

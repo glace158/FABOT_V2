@@ -50,6 +50,7 @@ while True:
 	retL, imgL= CamL.read()
 	retR, imgR= CamR.read()
 	
+
 	# Proceed only if the frames have been captured
 	if retL and retR:
 		#imgL_gray = imgL.copy()
@@ -75,8 +76,8 @@ while True:
 							cv2.INTER_LANCZOS4,
 							cv2.BORDER_CONSTANT,
 							0)
-		cv2.imshow('imgR',Right_nice)
-		cv2.imshow('imgL',Left_nice)
+		cv2.imshow('imgR',imgR_gray)
+		cv2.imshow('imgL',imgL_gray)
 		# Updating the parameters based on the trackbar positions
 		numDisparities = cv2.getTrackbarPos('numDisparities','disp')*16
 		blockSize = cv2.getTrackbarPos('blockSize','disp')*2 + 5

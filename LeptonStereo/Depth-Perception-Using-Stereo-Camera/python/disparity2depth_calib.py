@@ -24,13 +24,13 @@ cv_file.release()
 # Keeping the target object at max_dist we store disparity values
 # after every sample_delta distance.
 max_dist = 230 # max distance to keep the target object (in cm)
-min_dist = 50 # Minimum distance the stereo setup can measure (in cm)
-sample_delta = 40 # Distance between two sampling points (in cm)
+min_dist = 70 # Minimum distance the stereo setup can measure (in cm)
+sample_delta = 20 # Distance between two sampling points (in cm)
 
 Z = max_dist 
 Value_pairs = []
 
-disp_map = np.zeros((600,600,3))
+#disp_map = np.zeros((600,600,3))
 
 sr = cv2.dnn_superres.DnnSuperResImpl_create()
 path = "ESPCN_x4.pb"
@@ -64,11 +64,11 @@ def mouse_click(event,x,y,flags,param):
 			
 
 
-cv2.namedWindow('disp',cv2.WINDOW_NORMAL)
-cv2.resizeWindow('disp',600,600)
-cv2.namedWindow('left image',cv2.WINDOW_NORMAL)
-cv2.resizeWindow('left image',600,600)
-cv2.setMouseCallback('disp',mouse_click)
+#cv2.namedWindow('disp',cv2.WINDOW_NORMAL)
+#cv2.resizeWindow('disp',600,600)
+#cv2.namedWindow('left image',cv2.WINDOW_NORMAL)
+#cv2.resizeWindow('left image',600,600)
+#cv2.setMouseCallback('disp',mouse_click)
 
 # Creating an object of StereoBM algorithm
 stereo = cv2.StereoBM_create()
@@ -79,13 +79,17 @@ while True:
 	retR, imgR= CamR.read()
 	retL, imgL= CamL.read()
 	
+	#imgR = cv2.resize(imgR, (640,480))
+	#imgL = cv2.resize(imgL, (640,480))
+	imgR = sr.upsample(imgR)
+	imgL = sr.upsample(imgL)
 	# Proceed only if the frames have been captured
 	if retL and retR:
 		imgR_gray = cv2.cvtColor(imgR,cv2.COLOR_BGR2GRAY)
 		imgL_gray = cv2.cvtColor(imgL,cv2.COLOR_BGR2GRAY)
 		
-		imgR_gray = sr.upsample(imgR_gray)
-		imgL_gray = sr.upsample(imgL_gray)
+		#imgR_gray = sr.upsample(imgR_gray)
+		#imgL_gray = sr.upsample(imgL_gray)
 		
 		# Applying stereo image rectification on the left image
 		Left_nice= cv2.remap(imgL_gray,
@@ -130,7 +134,10 @@ while True:
 
 		# Displaying the disparity map
 		cv2.imshow("disp",disparity)
-		cv2.imshow("left image",imgL)
+		cv2.imshow("left image",Left_nice)
+		cv2.imshow("right image",imgR)
+		cv2.setMouseCallback('disp',mouse_click)
+
 
 		if cv2.waitKey(1) == 27:
 			break
