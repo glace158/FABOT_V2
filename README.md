@@ -116,3 +116,165 @@ Test Realsense
 cd yolov5_object_mapping
 python3 object_mapping.py
 ```
+
+## Install Hector SLAM
+### Install YDLidar SDK and driver
+YDLidar-SDK Link
+```
+https://github.com/YDLIDAR/YDLidar-SDK
+``` 
+YDLidar-SDK Link
+```
+https://github.com/YDLIDAR/ydlidar_ros_driver
+```
+### 1. Install Qt4
+```
+sudo apt-get install qt4-qmake qt4-dev-tools
+```
+### 2. Git clone Hector-mapping
+git clone at ydlidar_ws/src$ 
+```
+git clone https://github.com/tu-darmstadt-ros-pkg/hector_slam.git
+
+cd ..
+catkin_make
+```
+#### If you issue Opencv path
+Modify cv_bridgeConfig.cmake
+```
+sudo nano /opt/ros/melodic/share/cv_bridge/cmake/cv_bridgeConfig.cmake
+```
+Change line before
+```
+set(_include_dirs "include;/usr/include;/usr/include/opencv")
+```
+Change line after
+```
+set(_include_dirs "include;/usr/include;/usr/include/opencv4")
+```
+### 3. Modify launch flie
+```
+sudo nano ~/ydlidar_ws/src/hector_slam/hector_mapping/launch/mapping_default.launch
+```
+Change after
+```
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="tf_map_scanmatch_transform_frame_name" default="scanmatcher_frame"/>
+  <!--<arg name="base_frame" default="base_footprint"/>-->
+  <arg name="base_frame" default="laser_frame"/>
+  <!--<arg name="odom_frame" default="nav"/>-->
+  <arg name="odom_frame" default="laser_frame"/>
+  <arg name="pub_map_odom_transform" default="true"/>
+  <arg name="scan_subscriber_queue_size" default="5"/>
+  <arg name="scan_topic" default="scan"/>
+  <arg name="map_size" default="2048"/>
+  
+  <node pkg="hector_mapping" type="hector_mapping" name="hector_mapping" output="screen">
+    
+    <!-- Frame names -->
+    <param name="map_frame" value="map" />
+    <param name="base_frame" value="$(arg base_frame)" />
+    <param name="odom_frame" value="$(arg odom_frame)" />
+    
+    <!-- Tf use -->
+    <param name="use_tf_scan_transformation" value="true"/>
+    <param name="use_tf_pose_start_estimate" value="false"/>
+    <param name="pub_map_odom_transform" value="$(arg pub_map_odom_transform)"/>
+    
+    <!-- Map size / start point -->
+    <param name="map_resolution" value="0.050"/>
+    <param name="map_size" value="$(arg map_size)"/>
+    <param name="map_start_x" value="0.5"/>
+    <param name="map_start_y" value="0.5" />
+    <param name="map_multi_res_levels" value="2" />
+    
+    <!-- Map update parameters -->
+    <param name="update_factor_free" value="0.4"/>
+    <param name="update_factor_occupied" value="0.9" />    
+    <param name="map_update_distance_thresh" value="0.4"/>
+    <param name="map_update_angle_thresh" value="0.06" />
+    <param name="laser_z_min_value" value = "-1.0" />
+    <param name="laser_z_max_value" value = "1.0" />
+    
+    <!-- Advertising config --> 
+    <param name="advertise_map_service" value="true"/>
+    
+    <param name="scan_subscriber_queue_size" value="$(arg scan_subscriber_queue_size)"/>
+    <param name="scan_topic" value="$(arg scan_topic)"/>
+    
+    <!-- Debug parameters -->
+    <!--
+      <param name="output_timing" value="false"/>
+      <param name="pub_drawings" value="true"/>
+      <param name="pub_debug_output" value="true"/>
+    -->
+    <param name="tf_map_scanmatch_transform_frame_name" value="$(arg tf_map_scanmatch_transform_frame_name)" />
+  </node>
+    
+  <node pkg="tf" type="static_transform_publisher" name="base_to_broadcaster" args="0 0 0 0 0 0 base_link laser 100"/>
+</launch>
+```
+
+```
+sudo nano ~/ydlidar_ws/src/hector_slam/hector_slam_launch/launch/tutorial.launch
+```
+Change after
+```
+<?xml version="1.0"?>
+
+<launch>
+
+  <arg name="geotiff_map_file_path" default="$(find hector_geotiff)/maps"/>
+
+  <!--<param name="/use_sim_time" value="true"/>-->
+  <param name="/use_sim_time" value="false"/>
+  <node pkg="rviz" type="rviz" name="rviz"
+    args="-d $(find hector_slam_launch)/rviz_cfg/mapping_demo.rviz"/>
+
+  <include file="$(find hector_mapping)/launch/mapping_default.launch"/>
+
+  <include file="$(find hector_geotiff_launch)/launch/geotiff_mapper.launch">
+    <arg name="trajectory_source_frame_name" value="scanmatcher_frame"/>
+    <arg name="map_file_path" value="$(arg geotiff_map_file_path)"/>
+  </include>
+
+</launch>
+```
+
+### 4. Test Hector SLAM
+```
+roscore
+
+roslaunch ydlidar_ros_driver TX.launch
+
+roslaunch hector_slam_launch tutorial.launch
+```
+
+## RosWeb
+### Install rosbridge
+```
+sudo apt-get install ros-melodic-rosbridge-server
+```
+### Modify IP
+rosWeb/roslisb2.js
+```
+var ros = new ROSLIB.Ros({
+    url : 'ws://**localhost**:9090'
+  });
+```
+opt/ros/melodic/share/rosbridge_server/launch/rosbridge_websocket.launch
+```
+<arg name="address" default="**localhost**" />
+```
+### Test RosWeb
+Start rosbridge_websocket launch
+```
+roslaunch rosbridge_server rosbridge_websocket.launch
+```
+Start main server at ~/rosWeb/
+```
+python3 main.py
+```
+
