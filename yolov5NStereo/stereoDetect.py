@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python3
 import os
 import sys
 from pathlib import Path
@@ -7,7 +7,8 @@ import cv2
 import torch
 import time
 import math
-
+import rospy
+from std_msgs.msg import String
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -139,7 +140,7 @@ while True:
                         cv2.INTER_LANCZOS4,
                         cv2.BORDER_CONSTANT,
                         0)
-    
+    print(type(Left_nice))
     im = Left_nice
 
     # Applying stereo image rectification on the right image
@@ -215,7 +216,7 @@ while True:
         if len(det):
             # Rescale boxes from img_size to im0 size
             det[:, :4] = scale_boxes(im.shape[2:], det[:, :4], im0.shape).round()
-
+            count = 0
             # Write results
             for *xyxy, conf, cls in reversed(det):
                 c = int(cls)  # integer class
@@ -235,6 +236,11 @@ while True:
                 cv2.drawContours(mask2, cnts, 0, (255), -1)
                 depth_mean, _ = cv2.meanStdDev(depth_map, mask=mask2)
                 
+                pub = rospy.Publisher('distance', String, queue_size=10)
+                rospy.init_node('talker', anonymous=True)
+                hello_str = str(count) +"/" + str(int(depth_mean))
+                count += 1
+                pub.publish(hello_str)
                 cv2.putText(im0, "%.2f cm"%depth_mean, (x1 ,y1 +60),1,3,(255,255,255),5,3)
                 
         # Stream results
