@@ -10,7 +10,9 @@ import math
 #import rospy
 #from std_msgs.msg import String
 FILE = Path(__file__).resolve()
+
 ROOT = FILE.parents[0]  # YOLOv5 root directory
+print(ROOT)
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
@@ -23,7 +25,11 @@ from utils.torch_utils import select_device, smart_inference_mode
 from utils.augmentations import letterbox
 print(str(ROOT.parents[0]))
 # Reading the mapping values for stereo image rectification
+<<<<<<< HEAD
 cv_file = cv2.FileStorage(str(ROOT)+"/data/stereo_rectify_maps.xml", cv2.FILE_STORAGE_READ)
+=======
+cv_file = cv2.FileStorage(str(ROOT) + "/data/stereo_rectify_maps.xml", cv2.FILE_STORAGE_READ)
+>>>>>>> 72217fbe6ba9142fae1dd47322e86d218ed784b8
 Left_Stereo_Map_x = cv_file.getNode("Left_Stereo_Map_x").mat()
 Left_Stereo_Map_y = cv_file.getNode("Left_Stereo_Map_y").mat()
 Right_Stereo_Map_x = cv_file.getNode("Right_Stereo_Map_x").mat()
@@ -38,7 +44,12 @@ min_depth = 0 # minimum distance the setup can measure (in cm)
 depth_thresh = 400.0 # Threshold for SAFE distance (in cm)
 
 # Reading the stored the StereoBM parameters
+<<<<<<< HEAD
 cv_file = cv2.FileStorage(str(ROOT)+"/data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_READ)
+=======
+assert os.path.exists(str(ROOT) + "/data/depth_estmation_params_py.xml"),os.getcwd()
+cv_file = cv2.FileStorage(str(ROOT) + "/data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_READ)
+>>>>>>> 72217fbe6ba9142fae1dd47322e86d218ed784b8
 numDisparities = int(cv_file.getNode("numDisparities").real())
 blockSize = int(cv_file.getNode("blockSize").real())
 preFilterType = int(cv_file.getNode("preFilterType").real())
@@ -70,7 +81,7 @@ stereo.setMinDisparity(minDisparity)
 
 check_requirements(exclude=('tensorboard', 'thop'))
 
-weights=ROOT / 'best3.pt'  # model path or triton URL
+weights=ROOT / 'best.pt'  # model path or triton URL
 source=ROOT / '0'  # file/dir/URL/glob/screen/0(webcam)
 data=ROOT / 'data/coco128.yaml'  # dataset.yaml path
 img_size=(640, 480)  # inference size (height, width)
@@ -101,8 +112,8 @@ torch.backends.cudnn.benchmark = True
 
 imgs, fps, frames= [None], 0, 0
 transforms = None
-cap = cv2.VideoCapture(source)
-cap2 = cv2.VideoCapture(source + 1)
+cap = cv2.VideoCapture(source, cv2.CAP_V4L2)
+cap2 = cv2.VideoCapture(source + 1, cv2.CAP_V4L2)
 
 w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -124,12 +135,13 @@ dt = (Profile(), Profile(), Profile())
 
 
 while True:
-    cap2.grab()
-    success, im2 = cap2.retrieve()
-    
-    cap.grab()
-    success, im = cap.retrieve()
-
+    #cap2.grab()
+    #success, im2 = cap2.retrieve()
+    success, im2 = cap2.read()
+    #cap.grab()
+    #success, im = cap.retrieve()
+    success, im = cap.read()
+    print(success)
     imgR = cv2.resize(im, img_size)
     imgL = cv2.resize(im2, img_size)
     
