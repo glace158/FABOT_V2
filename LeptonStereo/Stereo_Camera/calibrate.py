@@ -1,10 +1,12 @@
 import numpy as np 
 import cv2
 from tqdm import tqdm
-
+from pathlib import Path
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]  # YOLOv5 root directory
 # Set the path to the images captured by the left and right cameras
-pathL = "./data/stereoL/"
-pathR = "./data/stereoR/"
+pathL = str(ROOT)+"/data/stereoL/"
+pathR = str(ROOT)+"/data/stereoR/"
 
 print("Extracting image coordinates of respective 3D pattern ....\n")
 
@@ -100,7 +102,7 @@ Right_Stereo_Map= cv2.initUndistortRectifyMap(new_mtxR, distR, rect_r, proj_mat_
 
 
 print("Saving paraeters ......")
-cv_file = cv2.FileStorage("data/params_py.xml", cv2.FILE_STORAGE_WRITE)
+cv_file = cv2.FileStorage(str(ROOT)+"/data/params_py.xml", cv2.FILE_STORAGE_WRITE)
 cv_file.write("Left_Stereo_Map_x",Left_Stereo_Map[0])
 cv_file.write("Left_Stereo_Map_y",Left_Stereo_Map[1])
 cv_file.write("Right_Stereo_Map_x",Right_Stereo_Map[0])

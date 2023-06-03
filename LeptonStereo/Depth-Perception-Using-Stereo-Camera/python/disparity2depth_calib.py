@@ -3,7 +3,9 @@ import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import re
-
+from pathlib import Path
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]  # YOLOv5 root directory
 # Check for left and right camera IDs
 # These values can change depending on the system
 CamL_id = 1 # Camera ID for left camera
@@ -13,7 +15,7 @@ CamL= cv2.VideoCapture(CamL_id)
 CamR= cv2.VideoCapture(CamR_id)
 
 # Reading the mapping values for stereo image rectification
-cv_file = cv2.FileStorage("../data/stereo_rectify_maps.xml", cv2.FILE_STORAGE_READ)
+cv_file = cv2.FileStorage(str(ROOT.parents[0])+"/data/stereo_rectify_maps.xml", cv2.FILE_STORAGE_READ)
 Left_Stereo_Map_x = cv_file.getNode("Left_Stereo_Map_x").mat()
 Left_Stereo_Map_y = cv_file.getNode("Left_Stereo_Map_y").mat()
 Right_Stereo_Map_x = cv_file.getNode("Right_Stereo_Map_x").mat()
@@ -33,12 +35,12 @@ Value_pairs = []
 #disp_map = np.zeros((600,600,3))
 
 sr = cv2.dnn_superres.DnnSuperResImpl_create()
-path = "ESPCN_x4.pb"
+path = str(ROOT)+"/ESPCN_x4.pb"
 sr.readModel(path)
 sr.setModel("espcn", 4) # set the model by passing the value and the upsampling ratio
 
 # Reading the stored the StereoBM parameters
-cv_file = cv2.FileStorage("../data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_READ)
+cv_file = cv2.FileStorage(str(ROOT.parents[0])+"/data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_READ)
 numDisparities = int(cv_file.getNode("numDisparities").real())
 blockSize = int(cv_file.getNode("blockSize").real())
 preFilterType = int(cv_file.getNode("preFilterType").real())
@@ -182,7 +184,7 @@ print("Value of M = ",M)
 
 
 # Storing the updated value of M along with the stereo parameters
-cv_file = cv2.FileStorage("../data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_WRITE)
+cv_file = cv2.FileStorage(str(ROOT.parents[0])+"/data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_WRITE)
 cv_file.write("numDisparities",numDisparities)
 cv_file.write("blockSize",blockSize)
 cv_file.write("preFilterType",preFilterType)

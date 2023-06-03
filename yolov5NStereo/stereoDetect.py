@@ -7,8 +7,8 @@ import cv2
 import torch
 import time
 import math
-import rospy
-from std_msgs.msg import String
+#import rospy
+#from std_msgs.msg import String
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -21,9 +21,9 @@ from utils.general import (LOGGER, Profile, check_img_size, check_requirements, 
 from utils.plots import Annotator, colors
 from utils.torch_utils import select_device, smart_inference_mode
 from utils.augmentations import letterbox
-
+print(str(ROOT.parents[0]))
 # Reading the mapping values for stereo image rectification
-cv_file = cv2.FileStorage("./data/stereo_rectify_maps.xml", cv2.FILE_STORAGE_READ)
+cv_file = cv2.FileStorage(str(ROOT)+"/data/stereo_rectify_maps.xml", cv2.FILE_STORAGE_READ)
 Left_Stereo_Map_x = cv_file.getNode("Left_Stereo_Map_x").mat()
 Left_Stereo_Map_y = cv_file.getNode("Left_Stereo_Map_y").mat()
 Right_Stereo_Map_x = cv_file.getNode("Right_Stereo_Map_x").mat()
@@ -38,7 +38,7 @@ min_depth = 0 # minimum distance the setup can measure (in cm)
 depth_thresh = 400.0 # Threshold for SAFE distance (in cm)
 
 # Reading the stored the StereoBM parameters
-cv_file = cv2.FileStorage("./data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_READ)
+cv_file = cv2.FileStorage(str(ROOT)+"/data/depth_estmation_params_py.xml", cv2.FILE_STORAGE_READ)
 numDisparities = int(cv_file.getNode("numDisparities").real())
 blockSize = int(cv_file.getNode("blockSize").real())
 preFilterType = int(cv_file.getNode("preFilterType").real())
@@ -236,12 +236,12 @@ while True:
                 cv2.drawContours(mask2, cnts, 0, (255), -1)
                 depth_mean, _ = cv2.meanStdDev(depth_map, mask=mask2)
                 
-                pub = rospy.Publisher('distance', String, queue_size=10)
-                rospy.init_node('talker', anonymous=True)
-                hello_str = str(count) +"/" + str(int(depth_mean))
+                #pub = rospy.Publisher('distance', String, queue_size=10)
+                #rospy.init_node('talker', anonymous=True)
+                #hello_str = str(count) +"/" + str(int(depth_mean))
                 count += 1
-                pub.publish(hello_str)
-                cv2.putText(im0, "%.2f cm"%depth_mean, (x1 ,y1 +60),1,3,(255,255,255),5,3)
+                #pub.publish(hello_str)
+                cv2.putText(im0, "%.2f cm"%(depth_mean-25), (x1 ,y1 +60),1,3,(255,255,255),5,3)
                 
         # Stream results
         im0 = annotator.result()

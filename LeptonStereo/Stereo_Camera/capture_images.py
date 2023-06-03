@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import time
 import re
+import os
+from pathlib import Path
 '''
 print("Checking the right and left camera IDs:")
 print("Press (y) if IDs are correct and (n) to swap the IDs")
@@ -39,16 +41,19 @@ CamL.release()
 '''
 CamL= cv2.VideoCapture(CamL_id)
 CamR= cv2.VideoCapture(CamR_id)
-output_path = "./data/"
+
 print("waiting..")
 start = time.time()
 T = 5
-count = 12
-
+count = 0
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]  # YOLOv5 root directory
+print(ROOT)
+output_path = str(ROOT) + "/data/"
 sr = cv2.dnn_superres.DnnSuperResImpl_create()
-path = "ESPCN_x4.pb"
-sr.readModel(path)
-sr.setModel("espcn", 4) # set the model by passing the value and the upsampling ratio
+path = str(ROOT) + "/ESPCN_x4.pb"
+#sr.readModel(path)
+#sr.setModel("espcn", 4) # set the model by passing the value and the upsampling ratio
 
 while True:
     timer = T - int(time.time() - start)
@@ -63,8 +68,10 @@ while True:
     grayR= cv2.cvtColor(frameR,cv2.COLOR_BGR2GRAY)
     grayL= cv2.cvtColor(frameL,cv2.COLOR_BGR2GRAY)
     
-    grayR = sr.upsample(grayR)
-    grayL = sr.upsample(grayL)
+    #grayR = sr.upsample(grayR)
+    #grayL = sr.upsample(grayL)
+    grayR = cv2.resize(grayR, (640,480))
+    grayL = cv2.resize(grayL, (640,480))
     
     cv2.imshow('imgR',grayR)
     cv2.imshow('imgL',grayL)

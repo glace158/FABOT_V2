@@ -13,7 +13,7 @@ def showVideo(num):
         ret, frame = cap.read()
         
         if not ret:
-            print(Error)
+            print("Error")
             break
         
         cv2.imshow('video', frame)
@@ -25,4 +25,4 @@ def showVideo(num):
     cap.release()
     cv2.destroyAllWindows()
 
-showVideo(0)
+showVideo(1 )
