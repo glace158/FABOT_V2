@@ -65,7 +65,6 @@ def mouse_click(event,x,y,flags,param):
 			Z-=sample_delta
 			
 
-
 #cv2.namedWindow('disp',cv2.WINDOW_NORMAL)
 #cv2.resizeWindow('disp',600,600)
 #cv2.namedWindow('left image',cv2.WINDOW_NORMAL)
